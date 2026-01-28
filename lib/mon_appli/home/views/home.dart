@@ -1,6 +1,8 @@
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:groupe_samuel_appli/historique/views/historique.dart';
+import 'package:groupe_samuel_appli/messagerie/views/messagerie.dart';
+import 'package:groupe_samuel_appli/mon_appli/acceuil/views/acceuil.dart';
 import 'package:groupe_samuel_appli/mon_appli/ain%C3%A9s/views/futurs_ain%C3%A9s.dart';
 import 'package:groupe_samuel_appli/mon_appli/debutants/views/debutants.dart';
 import 'package:groupe_samuel_appli/mon_appli/futurs_ain%C3%A9s/views/futurs_missionnaire.dart';
@@ -35,17 +37,11 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
     )..repeat(reverse: true);
 
     _scaleAnimation = Tween<double>(begin: 0.95, end: 1.05).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.easeInOut,
-      ),
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
 
     _rotateAnimation = Tween<double>(begin: 0, end: 0.02).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.easeInOut,
-      ),
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
   }
 
@@ -56,27 +52,27 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
   }
 
   Future<void> _pickImage() async {
-  final XFile? image = await _picker.pickImage(
-    source: ImageSource.gallery,
-    imageQuality: 80, // Réduit la qualité pour éviter les erreurs
-    maxWidth: 800, // Limite la largeur
-  );
-  
-  if (image != null) {
-    if (kIsWeb) {
-      // Pour Web
-      final bytes = await image.readAsBytes();
-      setState(() {
-        _userImageBytes = bytes;
-      });
-    } else {
-      // Pour Mobile
-      setState(() {
-        _userImageFile = File(image.path);
-      });
+    final XFile? image = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80, // Réduit la qualité pour éviter les erreurs
+      maxWidth: 800, // Limite la largeur
+    );
+
+    if (image != null) {
+      if (kIsWeb) {
+        // Pour Web
+        final bytes = await image.readAsBytes();
+        setState(() {
+          _userImageBytes = bytes;
+        });
+      } else {
+        // Pour Mobile
+        setState(() {
+          _userImageFile = File(image.path);
+        });
+      }
     }
   }
-}
 
   @override
   Widget build(BuildContext context) {
@@ -140,10 +136,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
       ),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            const Color(0xFF2E7D32),
-            const Color(0xFF1B5E20),
-          ],
+          colors: [const Color(0xFF2E7D32), const Color(0xFF1B5E20)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -193,10 +186,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
                 ),
               ),
             ),
-
-            
           ),
-          
 
           // Titre
           Column(
@@ -243,10 +233,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
               ),
               child: ClipOval(
                 child: _userImage != null
-                    ? Image.file(
-                        _userImage!,
-                        fit: BoxFit.cover,
-                      )
+                    ? Image.file(_userImage!, fit: BoxFit.cover)
                     : Icon(
                         Icons.person,
                         color: const Color(0xFF2E7D32),
@@ -259,7 +246,6 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
       ),
     );
   }
-  
 
   Widget _buildCentralIcon(double screenWidth, double screenHeight) {
     return AnimatedBuilder(
@@ -275,10 +261,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: LinearGradient(
-                  colors: [
-                    const Color(0xFFFFEB3B),
-                    const Color(0xFFD32F2F),
-                  ],
+                  colors: [const Color(0xFFFFEB3B), const Color(0xFFD32F2F)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -326,13 +309,32 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
   }
 
   Widget _buildCategoryButtons(double screenWidth, double screenHeight) {
-    
     final categories = [
-  {'name': 'Débutant', 'icon': Icons.star_outline, 'color': Color(0xFF4CAF50), 'page': const DebutantsPage()},
-  {'name': 'Futur Promettant', 'icon': Icons.stars, 'color': Color(0xFF66BB6A), 'page': const PromettantsPage()},
-  {'name': 'Futur Missionnaire', 'icon': Icons.auto_awesome, 'color': Color(0xFFFF9800), 'page': const FutursAinesPage()},
-  {'name': 'Futur Aîné', 'icon': Icons.emoji_events, 'color': Color(0xFFD32F2F), 'page': const AinesPage()},
-];
+      {
+        'name': 'Débutant',
+        'icon': Icons.star_outline,
+        'color': Color(0xFF4CAF50),
+        'page': const DebutantsPage(),
+      },
+      {
+        'name': 'Futur Promettant',
+        'icon': Icons.stars,
+        'color': Color(0xFF66BB6A),
+        'page': const PromettantsPage(),
+      },
+      {
+        'name': 'Futur Missionnaire',
+        'icon': Icons.auto_awesome,
+        'color': Color(0xFFFF9800),
+        'page': const FutursAinesPage(),
+      },
+      {
+        'name': 'Futur Aîné',
+        'icon': Icons.emoji_events,
+        'color': Color(0xFFD32F2F),
+        'page': const AinesPage(),
+      },
+    ];
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.06),
@@ -358,7 +360,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
     String title,
     IconData icon,
     Color color,
-     Widget page,
+    Widget page,
     double screenWidth,
     double screenHeight,
   ) {
@@ -386,9 +388,9 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
           borderRadius: BorderRadius.circular(30),
           onTap: () {
             Navigator.push(
-    context,
-    MaterialPageRoute(builder: (context) => page),
-  );
+              context,
+              MaterialPageRoute(builder: (context) => page),
+            );
             // TODO: Navigation vers la page de catégorie
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -456,10 +458,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
           ),
         ],
         border: Border(
-          top: BorderSide(
-            color: const Color(0xFFFFEB3B),
-            width: 3,
-          ),
+          top: BorderSide(color: const Color(0xFFFFEB3B), width: 3),
         ),
       ),
       child: Padding(
@@ -470,16 +469,126 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
         child: Column(
           children: [
             // Icônes sociales
+            // Row(
+            //   mainAxisAlignment: MainAxisAlignment.center,
+            //   children: [
+            //     _buildSocialIcon(Icons.facebook, const Color(0xFFD32F2F)),
+            //     SizedBox(width: screenWidth * 0.04),
+            //     _buildSocialIcon(Icons.mail, const Color(0xFFFFEB3B)),
+            //     SizedBox(width: screenWidth * 0.04),
+            //     _buildSocialIcon(Icons.phone, const Color(0xFF4CAF50)),
+            //     SizedBox(width: screenWidth * 0.04),
+            //     _buildSocialIcon(Icons.share, const Color(0xFFFF9800)),
+            //   ],
+            // ),
+
+            // Nouvelle barre de navigation : Accueil, Messages, Historique, Déconnexion
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _buildSocialIcon(Icons.facebook, const Color(0xFFD32F2F)),
+                // Accueil
+                InkWell(
+                  onTap: () {
+                    // Tu es déjà sur la page d'accueil, donc on peut juste rafraîchir ou rien faire
+                    // Ou rediriger vers Home si tu as plusieurs niveaux
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(builder: (context) => const Home()),
+                      (route) => false,
+                    );
+                  },
+                  child: _buildSocialIcon(Icons.home, const Color(0xFFFFEB3B)),
+                ),
                 SizedBox(width: screenWidth * 0.04),
-                _buildSocialIcon(Icons.mail, const Color(0xFFFFEB3B)),
+
+                // Messages (à adapter selon ta page de messages)
+                InkWell(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => MessageriePage()),
+                    );
+                    // Remplace par ta vraie page de messages quand tu l'auras
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Page Messages')),
+                    );
+                    // Exemple futur : Navigator.push(context, MaterialPageRoute(builder: (_) => MessagesPage()));
+                  },
+                  child: _buildSocialIcon(
+                    Icons.message,
+                    const Color(0xFF4CAF50),
+                  ),
+                ),
                 SizedBox(width: screenWidth * 0.04),
-                _buildSocialIcon(Icons.phone, const Color(0xFF4CAF50)),
+
+                // Historique
+                InkWell(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => HistoriquePage()),
+                    );
+                    // Remplace par ta page d'historique quand elle existe
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Bienvenue sur votre page historique'),
+                      ),
+                    );
+                  },
+                  child: _buildSocialIcon(
+                    Icons.history,
+                    const Color(0xFFFF9800),
+                  ),
+                ),
                 SizedBox(width: screenWidth * 0.04),
-                _buildSocialIcon(Icons.share, const Color(0xFFFF9800)),
+
+                // Déconnexion
+                InkWell(
+                  onTap: () {
+                    // Boîte de dialogue de confirmation (recommandé)
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Déconnexion'),
+                        content: const Text(
+                          'Voulez-vous vraiment vous déconnecter ?',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Annuler'),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pop(context); // Ferme le dialog
+                              // Ici tu peux ajouter : FirebaseAuth.instance.signOut(); si tu utilises Firebase
+                              // Puis rediriger vers la page de login
+                              // Navigator.pushNamedAndRemoveUntil(
+                              //   context,
+                              //   '/welcome', // Remplace par le nom de ta route de connexion
+                              //   (route) => true,
+                              // );
+                              Navigator.of(context).pushAndRemoveUntil(
+                                MaterialPageRoute(
+                                  builder: (context) => Welcome(),
+                                ),
+                                (Route<dynamic> route) => false,
+                              );
+                            },
+                            child: const Text(
+                              'Oui',
+                              style: TextStyle(color: Colors.red),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                  child: _buildSocialIcon(
+                    Icons.logout,
+                    const Color(0xFFD32F2F),
+                  ),
+                ),
               ],
             ),
 
@@ -543,11 +652,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
           ),
         ],
       ),
-      child: Icon(
-        icon,
-        color: color,
-        size: 24,
-      ),
+      child: Icon(icon, color: color, size: 24),
     );
   }
 }

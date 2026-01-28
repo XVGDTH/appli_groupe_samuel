@@ -2,6 +2,9 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:gal/gal.dart';
+import 'package:groupe_samuel_appli/services/membre_service.dart';
+import 'package:groupe_samuel_appli/services/notification_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:io';
@@ -21,6 +24,7 @@ class _PromettantsPageState extends State<PromettantsPage>
     with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final ImagePicker _picker = ImagePicker();
+  final GlobalKey _cardKey = GlobalKey();
 
   // Variables pour l'image (Web et Mobile)
   Uint8List? _promettantImageBytes;
@@ -42,7 +46,6 @@ class _PromettantsPageState extends State<PromettantsPage>
   final _dateNaissanceController = TextEditingController();
   final _groupeSanguinController = TextEditingController();
   final _allergiesController = TextEditingController();
-  final GlobalKey _cardKey = GlobalKey();
 
   String _typeResponsable = 'Dirigeant';
   String _sexe = 'Masculin';
@@ -54,11 +57,30 @@ class _PromettantsPageState extends State<PromettantsPage>
   late Animation<double> _rotateAnimation;
 
   // Liste des promettants
-  final List<Map<String, dynamic>> _promettantsList = [];
+  List<Map<String, dynamic>> _promettantsList = [];
 
   @override
   void initState() {
     super.initState();
+    // Animation pulsation
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    )..repeat(reverse: true);
+    _pulseAnimation = Tween<double>(begin: 0.95, end: 1.08).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+    // Animation rotation
+    _rotateController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 3000),
+    )..repeat(reverse: true);
+    _rotateAnimation = Tween<double>(begin: -0.03, end: 0.03).animate(
+      CurvedAnimation(parent: _rotateController, curve: Curves.easeInOut),
+    );
+
+    // Charge les Futurs Aînés depuis Isar au démarrage
+    _loadAines();
 
     // Animation pulsation
     _pulseController = AnimationController(
@@ -79,6 +101,63 @@ class _PromettantsPageState extends State<PromettantsPage>
     _rotateAnimation = Tween<double>(begin: -0.03, end: 0.03).animate(
       CurvedAnimation(parent: _rotateController, curve: Curves.easeInOut),
     );
+  }
+
+  // Future<void> _loadAines() async {
+  //   final aines = await MembreService.getAllByCategorie(
+  //     'Aine',
+  //   ); // ← 'Aine' pour les Futurs Aînés
+
+  //   setState(() {
+  //     _promettantsList = aines
+  //         .map(
+  //           (m) => {
+  //             'responsable': m.nomResponsable,
+  //             'typeResponsable': m.typeResponsable,
+  //             'contactResponsable': m.contactResponsable,
+  //             'nom': m.nom,
+  //             'prenom': m.prenom,
+  //             'age': m.age,
+  //             'sexe': m.sexe,
+  //             'classe': m.classe,
+  //             'personneUrgente': m.personneUrgence,
+  //             'contactUrgente': m.contactUrgente,
+  //             'adresse': m.adresse,
+  //             'lieuNaissance': m.lieuNaissance,
+  //             'dateNaissance': m.dateNaissance,
+  //             'imageBytes': m.photoBytes,
+  //             'hasImage': m.photoBytes != null,
+  //           },
+  //         )
+  //         .toList();
+  //   });
+  // }
+  Future<void> _loadAines() async {
+    final aine = await MembreService.getAllByCategorie('Promettant');
+
+    setState(() {
+      _promettantsList = aine
+          .map(
+            (m) => {
+              'responsable': m.nomResponsable,
+              'typeResponsable': m.typeResponsable,
+              'contactResponsable': m.contactResponsable,
+              'nom': m.nom,
+              'prenom': m.prenom,
+              'age': m.age,
+              'sexe': m.sexe,
+              'classe': m.classe,
+              'personneUrgente': m.personneUrgence,
+              'contactUrgente': m.contactUrgente,
+              'adresse': m.adresse,
+              'lieuNaissance': m.lieuNaissance,
+              'dateNaissance': m.dateNaissance,
+              'imageBytes': m.photoBytesAsUint8List, // ✅ Utilise le getter
+              'hasImage': m.photoBytes != null,
+            },
+          )
+          .toList();
+    });
   }
 
   @override
@@ -144,20 +223,95 @@ class _PromettantsPageState extends State<PromettantsPage>
     }
   }
 
+  // Future<void> _downloadCard(BuildContext context, GlobalKey cardKey) async {
+  //   try {
+  //     // Vérifier si on a la permission (GAL gère automatiquement les permissions)
+  //     if (!kIsWeb) {
+  //       final hasAccess = await Gal.hasAccess();
+  //       if (!hasAccess) {
+  //         final requestGranted = await Gal.requestAccess();
+  //         if (!requestGranted) {
+  //           throw 'Permission refusée pour accéder à la galerie';
+  //         }
+  //       }
+  //     }
+
+  //     await Future.delayed(const Duration(milliseconds: 100));
+
+  //     // Capturer l'image de la carte
+  //     RenderRepaintBoundary boundary =
+  //         cardKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+  //     ui.Image image = await boundary.toImage(pixelRatio: 3.0);
+  //     ByteData? byteData = await image.toByteData(
+  //       format: ui.ImageByteFormat.png,
+  //     );
+  //     Uint8List pngBytes = byteData!.buffer.asUint8List();
+
+  //     if (kIsWeb) {
+  //       // Pour le web
+  //       final blob = html.Blob([pngBytes]);
+  //       final url = html.Url.createObjectUrlFromBlob(blob);
+  //       final anchor = html.AnchorElement(href: url)
+  //         ..setAttribute(
+  //           'download',
+  //           'carte_promettant_${DateTime.now().millisecondsSinceEpoch}.png',
+  //         )
+  //         ..click();
+  //       html.Url.revokeObjectUrl(url);
+  //     } else {
+  //       // Pour mobile (Android/iOS)
+  //       final tempDir = await getTemporaryDirectory();
+  //       final fileName =
+  //           'carte_promettant_${DateTime.now().millisecondsSinceEpoch}.png';
+  //       final file = File('${tempDir.path}/$fileName');
+  //       await file.writeAsBytes(pngBytes);
+
+  //       // Sauvegarder dans la galerie
+  //       await Gal.putImage(file.path, album: 'Groupe Samuel');
+
+  //       // Supprimer le fichier temporaire
+  //       await file.delete();
+  //     }
+
+  //     if (!context.mounted) return;
+
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       const SnackBar(
+  //         content: Text('✅ Carte enregistrée dans la galerie avec succès !'),
+  //         backgroundColor: Color(0xFF66BB6A),
+  //         duration: Duration(seconds: 3),
+  //       ),
+  //     );
+  //   } catch (e) {
+  //     if (!context.mounted) return;
+
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(
+  //         content: Text('❌ Erreur: ${e.toString()}'),
+  //         backgroundColor: Colors.red,
+  //         duration: const Duration(seconds: 4),
+  //       ),
+  //     );
+  //   }
+  // }
+
   Future<void> _downloadCard(BuildContext context, GlobalKey cardKey) async {
     try {
-      // Demander la permission sur mobile
+      // ✅ Vérifier les permissions avec GAL (pas permission_handler)
       if (!kIsWeb) {
-        final status = await Permission.storage.request();
-        if (!status.isGranted) {
-          throw 'Permission de stockage refusée';
+        final hasAccess = await Gal.hasAccess();
+        if (!hasAccess) {
+          final requestGranted = await Gal.requestAccess();
+          if (!requestGranted) {
+            throw 'Permission refusée pour accéder à la galerie';
+          }
         }
       }
 
-      // Attendre un peu pour que le rendu soit complet
+      // ✅ Délai pour assurer le rendu complet
       await Future.delayed(const Duration(milliseconds: 100));
 
-      // Capturer le widget en image
+      // ✅ Capturer l'image de la carte
       RenderRepaintBoundary boundary =
           cardKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
       ui.Image image = await boundary.toImage(pixelRatio: 3.0);
@@ -167,50 +321,48 @@ class _PromettantsPageState extends State<PromettantsPage>
       Uint8List pngBytes = byteData!.buffer.asUint8List();
 
       if (kIsWeb) {
-        // Téléchargement Web
+        // ✅ Pour le web
         final blob = html.Blob([pngBytes]);
         final url = html.Url.createObjectUrlFromBlob(blob);
         final anchor = html.AnchorElement(href: url)
           ..setAttribute(
             'download',
-            'carte_promettant_${DateTime.now().millisecondsSinceEpoch}.png',
+            'carte_ainé_${DateTime.now().millisecondsSinceEpoch}.png',
           )
           ..click();
         html.Url.revokeObjectUrl(url);
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✅ Carte téléchargée avec succès !'),
-            backgroundColor: Color(0xFF66BB6A),
-          ),
-        );
       } else {
-        // Téléchargement Mobile
-        final directory = await getExternalStorageDirectory();
-        final downloadsPath = '/storage/emulated/0/Download';
-        final path =
-            '$downloadsPath/carte_promettant_${DateTime.now().millisecondsSinceEpoch}.png';
-
-        final file = File(path);
+        // ✅ Pour mobile (Android/iOS) - UTILISER GAL
+        final tempDir = await getTemporaryDirectory();
+        final fileName =
+            'carte_ainé_${DateTime.now().millisecondsSinceEpoch}.png';
+        final file = File('${tempDir.path}/$fileName');
         await file.writeAsBytes(pngBytes);
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('✅ Carte enregistrée dans Téléchargements'),
-            backgroundColor: const Color(0xFF66BB6A),
-            action: SnackBarAction(
-              label: 'OK',
-              textColor: Colors.white,
-              onPressed: () {},
-            ),
-          ),
-        );
+        // ✅ Sauvegarder dans la galerie avec GAL
+        await Gal.putImage(file.path, album: 'Groupe Samuel');
+
+        // ✅ Supprimer le fichier temporaire
+        await file.delete();
       }
+
+      if (!context.mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✅ Carte enregistrée dans la galerie avec succès !'),
+          backgroundColor: Color(0xFF66BB6A),
+          duration: Duration(seconds: 3),
+        ),
+      );
     } catch (e) {
+      if (!context.mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('❌ Erreur: ${e.toString()}'),
           backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
         ),
       );
     }
@@ -303,71 +455,93 @@ class _PromettantsPageState extends State<PromettantsPage>
     );
   }
 
-  void _savePromettant() {
+  Future<void> _savePromettant() async {
     if (_formKey.currentState!.validate()) {
-      setState(() {
-        _promettantsList.add({
-          'responsable': _responsableController.text,
-          'typeResponsable': _typeResponsable,
-          'contactResponsable': _contactResponsableController.text,
-          'nom': _nomController.text,
-          'prenom': _prenomController.text,
-          'age': _ageController.text,
-          'sexe': _sexe,
-          'classe': _classeController.text,
-          'personneUrgente': _personneUrgenteController.text,
-          'contactUrgente': _contactUrgenteController.text,
-          'adresse': _adresseController.text,
-          'lieuNaissance': _lieuNaissanceController.text,
-          'dateNaissance': _dateNaissanceController.text,
-          'groupeSanguin': _groupeSanguinController.text,
-          'allergies': _allergiesController.text,
-          'imageBytes': _promettantImageBytes,
-          'imageFile': _promettantImageFile,
-          'imagePath': _promettantImagePath,
-          'hasImage': _hasImage,
-        });
-      });
-      // Réinitialisation
-      _formKey.currentState!.reset();
-      _responsableController.clear();
-      _contactResponsableController.clear();
-      _nomController.clear();
-      _prenomController.clear();
-      _ageController.clear();
-      _classeController.clear();
-      _personneUrgenteController.clear();
-      _contactUrgenteController.clear();
-      _adresseController.clear();
-      _lieuNaissanceController.clear();
-      _dateNaissanceController.clear();
-      _groupeSanguinController.clear();
-      _allergiesController.clear();
+      try {
+        // Sauvegarde dans Isar
+        await MembreService.saveMembre(
+          categorie: 'Promettant',
+          typeResponsable: _typeResponsable,
+          nomResponsable: _responsableController.text.trim(),
+          contactResponsable: _contactResponsableController.text.trim(),
+          photoBytes: _promettantImageBytes,
+          nom: _nomController.text.trim(),
+          prenom: _prenomController.text.trim(),
+          age: _ageController.text.trim(),
+          sexe: _sexe,
+          classe: _classeController.text.trim(),
+          dateNaissance: _dateNaissanceController.text.trim(),
+          lieuNaissance: _lieuNaissanceController.text.trim(),
+          adresse: _adresseController.text.trim(),
+          personneUrgence: _personneUrgenteController.text.trim(),
+          contactUrgence: _contactUrgenteController.text.trim(),
+        );
 
-      setState(() {
-        _promettantImageBytes = null;
-        _promettantImageFile = null;
-        _promettantImagePath = null;
-        _hasImage = false;
-        _typeResponsable = 'Dirigeant';
-        _sexe = 'Masculin';
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: const [
-              Icon(Icons.check_circle, color: Colors.white),
-              SizedBox(width: 10),
-              Text('Promettant enregistré avec succès !'),
-            ],
+        // ✅ CRÉER UNE NOTIFICATION
+        await NotificationService.creerNotification(
+          categorie: 'Débutant',
+          nom: _nomController.text.trim(),
+          prenom: _prenomController.text.trim(),
+          age: _ageController.text.trim(),
+          classe: _classeController.text.trim(),
+          sexe: _sexe,
+          nomResponsable: _responsableController.text.trim(),
+          contactResponsable: _contactResponsableController.text.trim(),
+          typeResponsable: _typeResponsable,
+          contactUrgence: _contactUrgenteController.text.trim(),
+          personneUrgence: _personneUrgenteController.text.trim(),
+          photoBytes: _promettantImageBytes,
+        );
+
+        // ✅ RECHARGE LA LISTE DEPUIS LA BD
+        await _loadAines();
+
+        // Réinitialisation des champs
+        _formKey.currentState!.reset();
+        _responsableController.clear();
+        _contactResponsableController.clear();
+        _nomController.clear();
+        _prenomController.clear();
+        _ageController.clear();
+        _classeController.clear();
+        _personneUrgenteController.clear();
+        _contactUrgenteController.clear();
+        _adresseController.clear();
+        _lieuNaissanceController.clear();
+        _dateNaissanceController.clear();
+        _groupeSanguinController.clear();
+        _allergiesController.clear();
+
+        setState(() {
+          _promettantImageBytes = null;
+          _promettantImageFile = null;
+          _promettantImagePath = null;
+          _hasImage = false;
+          _typeResponsable = 'Dirigeant';
+          _sexe = 'Masculin';
+        });
+
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Débutant enregistré avec succès !'),
+            backgroundColor: Color(0xFF66BB6A),
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 2),
           ),
-          backgroundColor: const Color(0xFF66BB6A),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+        );
+      } catch (e) {
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Erreur d\'enregistrement: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
           ),
-        ),
-      );
+        );
+      }
     }
   }
 
@@ -472,58 +646,82 @@ class _PromettantsPageState extends State<PromettantsPage>
                   );
                 },
               ),
-              // Titre
-              Column(
-                children: [
-                  Text(
-                    'GROUPE SAMUEL',
-                    style: TextStyle(
-                      color: const Color(0xFFFFEB3B),
-                      fontSize: screenWidth * 0.05,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 2,
-                    ),
-                  ),
-                  Container(
-                    margin: const EdgeInsets.symmetric(vertical: 8),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFFFFEB3B).withOpacity(0.6),
-                          blurRadius: 15,
-                          spreadRadius: 2,
+
+              SizedBox(width: screenWidth * 0.02),
+
+              // Titre - COMPLÈTEMENT CORRIGÉ
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // GROUPE SAMUEL
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        'GROUPE SAMUEL',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: const Color(0xFFFFEB3B),
+                          fontSize: screenWidth * 0.045,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1,
                         ),
-                      ],
+                      ),
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.stars,
-                          color: Color(0xFF66BB6A),
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'FUTURS PROMETTANTS',
-                          style: TextStyle(
-                            color: const Color(0xFF66BB6A),
-                            fontSize: screenWidth * 0.045,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.5,
+
+                    SizedBox(height: screenHeight * 0.008),
+
+                    // Badge FUTURS PROMETTANTS - CORRIGÉ
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: screenWidth * 0.03,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFFFEB3B).withOpacity(0.6),
+                            blurRadius: 15,
+                            spreadRadius: 2,
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.stars,
+                            color: const Color(0xFF66BB6A),
+                            size: screenWidth * 0.04,
+                          ),
+                          SizedBox(width: screenWidth * 0.015),
+                          Flexible(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                'FUTURS PROMETTANTS',
+                                maxLines: 1,
+                                style: TextStyle(
+                                  color: const Color(0xFF66BB6A),
+                                  fontSize: screenWidth * 0.035,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+
+              SizedBox(width: screenWidth * 0.02),
+
               // Icône utilisateur
               Container(
                 width: screenWidth * 0.15,
@@ -552,17 +750,26 @@ class _PromettantsPageState extends State<PromettantsPage>
 
           SizedBox(height: screenHeight * 0.015),
 
+          // Devise du bas - CORRIGÉ
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Icon(Icons.favorite, color: Color(0xFFD32F2F), size: 16),
-              const SizedBox(width: 8),
-              Text(
-                'Prêt pour Servir avec Joie, avec Vérité',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: screenWidth * 0.032,
-                  fontStyle: FontStyle.italic,
+              SizedBox(width: screenWidth * 0.02),
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    'Prêt pour Servir avec Joie, avec Vérité',
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: screenWidth * 0.03,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -592,10 +799,11 @@ class _PromettantsPageState extends State<PromettantsPage>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ✅ TITRE CORRIGÉ
             Center(
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
+                padding: EdgeInsets.symmetric(
+                  horizontal: screenWidth * 0.03,
                   vertical: 10,
                 ),
                 decoration: BoxDecoration(
@@ -607,14 +815,25 @@ class _PromettantsPageState extends State<PromettantsPage>
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.app_registration, color: Colors.white),
-                    const SizedBox(width: 10),
-                    Text(
-                      'FORMULAIRE D\'ENREGISTREMENT',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: screenWidth * 0.04,
-                        fontWeight: FontWeight.bold,
+                    Icon(
+                      Icons.app_registration,
+                      color: Colors.white,
+                      size: screenWidth * 0.05,
+                    ),
+                    SizedBox(width: screenWidth * 0.02),
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          'FORMULAIRE D\'ENREGISTREMENT',
+                          maxLines: 1,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: screenWidth * 0.038,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -645,7 +864,7 @@ class _PromettantsPageState extends State<PromettantsPage>
               keyboardType: TextInputType.phone,
             ),
             SizedBox(height: screenHeight * 0.03),
-            _buildSectionTitle('⭐ Informations du Promettant', screenWidth),
+            _buildSectionTitle('⭐ Informations du debutant', screenWidth),
             SizedBox(height: screenHeight * 0.02),
             // Photo (OPTIONNELLE)
             Center(
@@ -780,11 +999,6 @@ class _PromettantsPageState extends State<PromettantsPage>
               'Adresse complète',
               maxLines: 2,
             ),
-            // SizedBox(height: screenHeight * 0.03),
-            // _buildSectionTitle('🏥 Informations Médicales', screenWidth),
-            // SizedBox(height: screenHeight * 0.02),
-            // _buildTextField('Groupe Sanguin', Icons.bloodtype, _groupeSanguinController, 'Ex: O+, A-, B+...', isRequired: false),
-            // _buildTextField('Allergies', Icons.health_and_safety, _allergiesController, 'Mentionner les allergies (optionnel)', maxLines: 2, isRequired: false),
             SizedBox(height: screenHeight * 0.03),
             _buildSectionTitle('🚨 Contact d\'Urgence', screenWidth),
             SizedBox(height: screenHeight * 0.02),
@@ -802,6 +1016,7 @@ class _PromettantsPageState extends State<PromettantsPage>
               keyboardType: TextInputType.phone,
             ),
             SizedBox(height: screenHeight * 0.04),
+            // ✅ BOUTON ENREGISTRER CORRIGÉ
             Center(
               child: Container(
                 width: double.infinity,
@@ -824,21 +1039,36 @@ class _PromettantsPageState extends State<PromettantsPage>
                   child: InkWell(
                     borderRadius: BorderRadius.circular(30),
                     onTap: _savePromettant,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.save, color: Colors.white, size: 28),
-                        const SizedBox(width: 10),
-                        Text(
-                          'ENREGISTRER LE PROMETTANT',
-                          style: TextStyle(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: screenWidth * 0.04,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.save,
                             color: Colors.white,
-                            fontSize: screenWidth * 0.04,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1,
+                            size: screenWidth * 0.06,
                           ),
-                        ),
-                      ],
+                          SizedBox(width: screenWidth * 0.02),
+                          Flexible(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                'ENREGISTRER LE DEBUTANT',
+                                maxLines: 1,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: screenWidth * 0.038,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -1062,8 +1292,10 @@ class _PromettantsPageState extends State<PromettantsPage>
             child: Row(
               children: [
                 Container(
-                  width: screenWidth * 0.15,
-                  height: screenWidth * 0.15,
+                  // width: screenWidth * 0.15,
+                  // height: screenWidth * 0.15,
+                  width: screenWidth * 0.18,
+                  height: screenWidth * 0.22,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
@@ -1121,11 +1353,23 @@ class _PromettantsPageState extends State<PromettantsPage>
     );
   }
 
+  // Widget _buildListImage(Map<String, dynamic> promettant) {
+  //   if (kIsWeb && promettant['imageBytes'] != null) {
+  //     return Image.memory(promettant['imageBytes'], fit: BoxFit.cover);
+  //   } else if (!kIsWeb && promettant['imageFile'] != null) {
+  //     return Image.file(promettant['imageFile'], fit: BoxFit.cover);
+  //   }
+  //   return const Icon(Icons.stars, color: Colors.white, size: 30);
+  // }
   Widget _buildListImage(Map<String, dynamic> promettant) {
-    if (kIsWeb && promettant['imageBytes'] != null) {
-      return Image.memory(promettant['imageBytes'], fit: BoxFit.cover);
-    } else if (!kIsWeb && promettant['imageFile'] != null) {
-      return Image.file(promettant['imageFile'], fit: BoxFit.cover);
+    // La photo est déjà en Uint8List grâce au getter
+    if (promettant['imageBytes'] != null) {
+      return Image.memory(
+        promettant['imageBytes'],
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+      );
     }
     return const Icon(Icons.stars, color: Colors.white, size: 30);
   }
@@ -1134,12 +1378,84 @@ class _PromettantsPageState extends State<PromettantsPage>
 // Page de détails
 class PromettantDetailPage extends StatelessWidget {
   final Map<String, dynamic> promettant;
-  const PromettantDetailPage({super.key, required this.promettant});
+  final GlobalKey _cardKey = GlobalKey();
+
+  PromettantDetailPage({super.key, required this.promettant});
+
+  Future<void> _downloadCard(BuildContext context, GlobalKey cardKey) async {
+    try {
+      // if (!kIsWeb) {
+      //   final status = await Permission.storage.request();
+      //   if (!status.isGranted) {
+      //     throw 'Permission refusée';
+      //   }
+      // }
+      if (!kIsWeb) {
+        final hasAccess = await Gal.hasAccess();
+        if (!hasAccess) {
+          final requestGranted = await Gal.requestAccess();
+          if (!requestGranted) {
+            throw 'Permission refusée pour accéder à la galerie';
+          }
+        }
+      }
+
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      RenderRepaintBoundary boundary =
+          cardKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+      ui.Image image = await boundary.toImage(pixelRatio: 3.0);
+      ByteData? byteData = await image.toByteData(
+        format: ui.ImageByteFormat.png,
+      );
+      Uint8List pngBytes = byteData!.buffer.asUint8List();
+
+      if (kIsWeb) {
+        final blob = html.Blob([pngBytes]);
+        final url = html.Url.createObjectUrlFromBlob(blob);
+        final anchor = html.AnchorElement(href: url)
+          ..setAttribute(
+            'download',
+            'carte_futur_promettant_${DateTime.now().millisecondsSinceEpoch}.png',
+          )
+          ..click();
+        html.Url.revokeObjectUrl(url);
+      } else {
+        // final directory = await getExternalStorageDirectory();
+        // final path =
+        //     '/storage/emulated/0/Download/carte_promettant_${DateTime.now().millisecondsSinceEpoch}.png';
+        // await File(path).writeAsBytes(pngBytes);
+        final tempDir = await getTemporaryDirectory();
+        final fileName =
+            'carte_futur_promettant_${DateTime.now().millisecondsSinceEpoch}.png';
+        final file = File('${tempDir.path}/$fileName');
+        await file.writeAsBytes(pngBytes);
+
+        await Gal.putImage(file.path, album: 'Groupe Samuel');
+        await file.delete();
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✅ Carte téléchargée avec succès !'),
+          backgroundColor: Color(0xFF66BB6A),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Erreur: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
@@ -1164,294 +1480,322 @@ class PromettantDetailPage extends StatelessWidget {
   }
 
   Widget _buildIDCard(double screenWidth, double screenHeight) {
-    return Container(
-      margin: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFF66BB6A), width: 3),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF66BB6A).withOpacity(0.4),
-            blurRadius: 25,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(15),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF66BB6A), Color(0xFF4CAF50)],
+    return RepaintBoundary(
+      // ✅ CHANGÉ ICI
+      key: _cardKey, // ✅ AJOUTÉ ICI
+      child: Container(
+        // ✅ CHANGÉ ICI (avant c'était juste "return Container")
+        margin: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFF66BB6A), width: 3),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF66BB6A).withOpacity(0.4),
+              blurRadius: 25,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(15),
+              // ... le reste continue normalement
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF66BB6A), Color(0xFF4CAF50)],
+                ),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(17),
+                  topRight: Radius.circular(17),
+                ),
               ),
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(17),
-                topRight: Radius.circular(17),
+              child: Column(
+                children: [
+                  Text(
+                    'CARTE FUTUR PROMETTANT',
+                    style: TextStyle(
+                      color: const Color(0xFFFFEB3B),
+                      fontSize: screenWidth * 0.05,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    'GROUPE SAMUEL',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: screenWidth * 0.045,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    'Archidiocèse de Bobo-Dioulasso',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: screenWidth * 0.035,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                  Text(
+                    ' chapelle SAINT PAUL de Ouezzin ville',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: screenWidth * 0.032,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
               ),
             ),
-            child: Column(
-              children: [
-                Text(
-                  'CARTE PROMETTANT',
-                  style: TextStyle(
-                    color: const Color(0xFFFFEB3B),
-                    fontSize: screenWidth * 0.05,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 2,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  'GROUPE SAMUEL',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: screenWidth * 0.045,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  'Archidiocèse de Bobo-Dioulasso',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: screenWidth * 0.032,
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: screenWidth * 0.25,
-                      height: screenWidth * 0.3,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(15),
-                        border: Border.all(
-                          color: const Color(0xFF66BB6A),
-                          width: 2,
-                        ),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(13),
-                        child: Image.asset(
-                          'assets/images/logo.jpg',
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return const Icon(
-                              Icons.stars,
-                              color: Color(0xFF66BB6A),
-                              size: 50,
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 15),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildCardInfo(
-                            'Nom:',
-                            promettant['nom'].toString().toUpperCase(),
-                            screenWidth,
-                          ),
-                          const SizedBox(height: 8),
-                          _buildCardInfo(
-                            'Prénom:',
-                            promettant['prenom'],
-                            screenWidth,
-                          ),
-                          const SizedBox(height: 8),
-                          _buildCardInfo(
-                            'Né(e) le:',
-                            promettant['dateNaissance'],
-                            screenWidth,
-                          ),
-                          const SizedBox(height: 8),
-                          _buildCardInfo(
-                            'À:',
-                            promettant['lieuNaissance'],
-                            screenWidth,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 15),
-                    Container(
-                      width: screenWidth * 0.25,
-                      height: screenWidth * 0.3,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(15),
-                        border: Border.all(
-                          color: const Color(0xFFFFEB3B),
-                          width: 2,
-                        ),
-                        gradient: promettant['hasImage'] != true
-                            ? const LinearGradient(
-                                colors: [Color(0xFF66BB6A), Color(0xFF4CAF50)],
-                              )
-                            : null,
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(13),
-                        child: _buildDetailImage(promettant),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                Container(
-                  padding: const EdgeInsets.all(15),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF5F5F5),
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                  child: Column(
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildCardInfo(
-                              'Classe:',
-                              promettant['classe'],
-                              screenWidth,
-                            ),
-                          ),
-                          Expanded(
-                            child: _buildCardInfo(
-                              'Âge:',
-                              '${promettant['age']} ans',
-                              screenWidth,
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      // nouvelle fonctionalité
-                      const SizedBox(height: 10),
                       Container(
-                        padding: const EdgeInsets.all(10),
+                        width: screenWidth * 0.25,
+                        height: screenWidth * 0.3,
                         decoration: BoxDecoration(
-                          color: const Color(0xFFE8F5E9),
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(15),
+                          border: Border.all(
+                            color: const Color(0xFF66BB6A),
+                            width: 2,
+                          ),
                         ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(13),
+                          child: Image.asset(
+                            'assets/images/logo.jpg',
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Icon(
+                                Icons.stars,
+                                color: Color(0xFF66BB6A),
+                                size: 50,
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 15),
+                      Expanded(
                         child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             _buildCardInfo(
-                              'Responsable:',
-                              '${promettant['typeResponsable']} - ${promettant['responsable']}',
+                              'Nom:',
+                              promettant['nom'].toString().toUpperCase(),
                               screenWidth,
                             ),
-                            const SizedBox(height: 5),
+                            const SizedBox(height: 8),
                             _buildCardInfo(
-                              'Contact:',
-                              promettant['contactResponsable'],
+                              'Prénom:',
+                              promettant['prenom'],
+                              screenWidth,
+                            ),
+                            const SizedBox(height: 8),
+                            _buildCardInfo(
+                              'Né(e) le:',
+                              promettant['dateNaissance'],
+                              screenWidth,
+                            ),
+                            const SizedBox(height: 8),
+                            _buildCardInfo(
+                              'À:',
+                              promettant['lieuNaissance'],
                               screenWidth,
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 10),
-                      _buildCardInfo(
-                        'Adresse:',
-                        promettant['adresse'],
-                        screenWidth,
-                      ),
-                      if (promettant['groupeSanguin'] != null &&
-                          promettant['groupeSanguin']
-                              .toString()
-                              .isNotEmpty) ...[
-                        const SizedBox(height: 10),
-                        _buildCardInfo(
-                          'Groupe Sanguin:',
-                          promettant['groupeSanguin'],
-                          screenWidth,
-                          isImportant: true,
+                      const SizedBox(width: 15),
+                      Container(
+                        width: screenWidth * 0.25,
+                        height: screenWidth * 0.3,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(15),
+                          border: Border.all(
+                            color: const Color(0xFFFFEB3B),
+                            width: 2,
+                          ),
+                          gradient: promettant['hasImage'] != true
+                              ? const LinearGradient(
+                                  colors: [
+                                    Color(0xFF66BB6A),
+                                    Color(0xFF4CAF50),
+                                  ],
+                                )
+                              : null,
                         ),
-                      ],
-                      const Divider(color: Color(0xFF66BB6A)),
-                      // _buildCardInfo(
-                      //   'Contact urgence:',
-                      //   promettant['contactUrgente'],
-                      //   screenWidth,
-                      //   isEmergency: true,
-                      // ),
-                      _buildCardInfo(
-                        'Personne urgence:',
-                        promettant['personneUrgente'],
-                        screenWidth,
-                      ),
-                      const SizedBox(height: 5),
-                      _buildCardInfo(
-                        'Contact urgence:',
-                        promettant['contactUrgente'],
-                        screenWidth,
-                        isEmergency: true,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(13),
+                          child: _buildDetailImage(promettant),
+                        ),
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(height: 15),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 10,
-                    horizontal: 15,
-                  ),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Color(0xFF66BB6A).withOpacity(0.2),
-                        Color(0xFF4CAF50).withOpacity(0.1),
-                      ],
+                  const SizedBox(height: 20),
+                  Container(
+                    padding: const EdgeInsets.all(15),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF5F5F5),
+                      borderRadius: BorderRadius.circular(15),
                     ),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.favorite,
-                        color: Color(0xFFD32F2F),
-                        size: 16,
-                      ),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          'Prêt pour Servir avec Joie, avec Vérité',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: const Color(0xFF66BB6A),
-                            fontSize: screenWidth * 0.03,
-                            fontStyle: FontStyle.italic,
-                            fontWeight: FontWeight.w600,
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildCardInfo(
+                                'Classe:',
+                                promettant['classe'],
+                                screenWidth,
+                              ),
+                            ),
+                            Expanded(
+                              child: _buildCardInfo(
+                                'Âge:',
+                                '${promettant['age']} ans',
+                                screenWidth,
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        // nouvelle fonctionalité
+                        const SizedBox(height: 10),
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE8F5E9),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Column(
+                            children: [
+                              _buildCardInfo(
+                                'Responsable:',
+                                '${promettant['typeResponsable']} - ${promettant['responsable']}',
+                                screenWidth,
+                              ),
+                              const SizedBox(height: 5),
+                              _buildCardInfo(
+                                'Contact:',
+                                promettant['contactResponsable'],
+                                screenWidth,
+                              ),
+                            ],
                           ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 10),
+                        // _buildCardInfo(
+                        //   'Adresse:',
+                        //   promettant['adresse'],
+                        //   screenWidth,
+                        // ),
+                        if (promettant['groupeSanguin'] != null &&
+                            promettant['groupeSanguin']
+                                .toString()
+                                .isNotEmpty) ...[
+                          const SizedBox(height: 10),
+                          _buildCardInfo(
+                            'Groupe Sanguin:',
+                            promettant['groupeSanguin'],
+                            screenWidth,
+                            isImportant: true,
+                          ),
+                        ],
+                        const Divider(color: Color(0xFF66BB6A)),
+                        // _buildCardInfo(
+                        //   'Contact urgence:',
+                        //   promettant['contactUrgente'],
+                        //   screenWidth,
+                        //   isEmergency: true,
+                        // ),
+                        _buildCardInfo(
+                          'Personne urgence:',
+                          promettant['personneUrgente'],
+                          screenWidth,
+                        ),
+                        const SizedBox(height: 5),
+                        _buildCardInfo(
+                          'Contact urgence:',
+                          promettant['contactUrgente'],
+                          screenWidth,
+                          isEmergency: true,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 15),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 10,
+                      horizontal: 15,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Color(0xFF66BB6A).withOpacity(0.2),
+                          Color(0xFF4CAF50).withOpacity(0.1),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.favorite,
+                          color: Color(0xFFD32F2F),
+                          size: 16,
+                        ),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            'Prêt pour Servir avec Joie, avec Vérité',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: const Color(0xFF66BB6A),
+                              fontSize: screenWidth * 0.03,
+                              fontStyle: FontStyle.italic,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
+  // Widget _buildDetailImage(Map<String, dynamic> promettant) {
+  //   if (kIsWeb && promettant['imageBytes'] != null) {
+  //     return Image.memory(promettant['imageBytes'], fit: BoxFit.cover);
+  //   } else if (!kIsWeb && promettant['imageFile'] != null) {
+  //     return Image.file(promettant['imageFile'], fit: BoxFit.cover);
+  //   }
+  //   return const Icon(Icons.stars, color: Colors.white, size: 50);
+  // }
   Widget _buildDetailImage(Map<String, dynamic> promettant) {
-    if (kIsWeb && promettant['imageBytes'] != null) {
-      return Image.memory(promettant['imageBytes'], fit: BoxFit.cover);
-    } else if (!kIsWeb && promettant['imageFile'] != null) {
-      return Image.file(promettant['imageFile'], fit: BoxFit.cover);
+    if (promettant['imageBytes'] != null) {
+      return Image.memory(
+        promettant['imageBytes'],
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+      );
     }
     return const Icon(Icons.stars, color: Colors.white, size: 50);
   }
@@ -1519,14 +1863,15 @@ class PromettantDetailPage extends StatelessWidget {
           color: Colors.transparent,
           child: InkWell(
             borderRadius: BorderRadius.circular(30),
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Téléchargement de la carte en cours...'),
-                  backgroundColor: Color(0xFF66BB6A),
-                ),
-              );
-            },
+            onTap: () => _downloadCard(context, _cardKey),
+            // onTap: () {
+            //   ScaffoldMessenger.of(context).showSnackBar(
+            //     const SnackBar(
+            //       content: Text('Téléchargement de la carte en cours...'),
+            //       backgroundColor: Color(0xFF66BB6A),
+            //     ),
+            //   );
+            // },
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
