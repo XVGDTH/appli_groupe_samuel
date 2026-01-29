@@ -10,7 +10,6 @@ import 'package:flutter/foundation.dart';
 import 'dart:io';
 
 import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:universal_html/html.dart' as html;
 
 class DebutantsPage extends StatefulWidget {
